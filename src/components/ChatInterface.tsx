@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,7 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const API_BASE = "https://185.232.204.20:5000/api";
+  const API_BASE = "https://akgptapi.vercel.app/api";
 
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
