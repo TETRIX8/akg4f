@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +26,7 @@ export const SessionManager = ({ currentSession, onSessionChange }: SessionManag
   const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
 
-  const API_BASE = "http://185.232.204.20:5000/api";
+  const API_BASE = "https://185.232.204.20:5000/api";
 
   const createNewSession = async () => {
     setIsCreating(true);

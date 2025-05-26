@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +25,7 @@ export const ModelSelector = ({ selectedModel, onModelChange }: ModelSelectorPro
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const API_BASE = "http://185.232.204.20:5000/api";
+  const API_BASE = "https://185.232.204.20:5000/api";
 
   useEffect(() => {
     fetchModels();
