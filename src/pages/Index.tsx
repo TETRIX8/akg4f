@@ -1,13 +1,72 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChatInterface } from "@/components/ChatInterface";
 import { ModelSelector } from "@/components/ModelSelector";
 import { SessionManager } from "@/components/SessionManager";
-import { Bot, Sparkles } from "lucide-react";
+import { AuthPage } from "@/components/AuthPage";
+import { Bot, Sparkles, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import type { User } from '@supabase/supabase-js';
 
 const Index = () => {
   const [currentSession, setCurrentSession] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState("gpt-4o-mini");
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Проверяем текущую сессию пользователя
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    // Слушаем изменения авторизации
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+        if (event === 'SIGNED_OUT') {
+          setCurrentSession(null);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast({
+        title: "Выход выполнен",
+        description: "Вы успешно вышли из системы"
+      });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось выйти из системы",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-white">Загрузка...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthPage onAuthSuccess={() => {}} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -31,7 +90,7 @@ const Index = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                  AI Assistant
+                  AkProject AI
                 </h1>
                 <p className="text-sm text-gray-400">Powered by Advanced AI Models</p>
               </div>
@@ -46,6 +105,14 @@ const Index = () => {
                 currentSession={currentSession}
                 onSessionChange={setCurrentSession}
               />
+              <Button
+                onClick={handleSignOut}
+                variant="ghost"
+                className="text-gray-300 hover:text-white"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Выйти
+              </Button>
             </div>
           </div>
         </header>

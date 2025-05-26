@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Plus, MessageSquare, ChevronDown, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SessionManagerProps {
   currentSession: string | null;
@@ -19,7 +20,8 @@ interface SessionManagerProps {
 interface Session {
   id: string;
   name: string;
-  created_at: Date;
+  model: string;
+  created_at: string;
 }
 
 export const SessionManager = ({ currentSession, onSessionChange }: SessionManagerProps) => {
@@ -27,45 +29,51 @@ export const SessionManager = ({ currentSession, onSessionChange }: SessionManag
   const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
 
-  const API_BASE = "https://akgptapi.vercel.app/api";
+  useEffect(() => {
+    loadSessions();
+  }, []);
+
+  const loadSessions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('ai_chat_sessions')
+        .select('*')
+        .order('updated_at', { ascending: false });
+
+      if (error) throw error;
+      setSessions(data || []);
+    } catch (error) {
+      console.error('Error loading sessions:', error);
+    }
+  };
 
   const createNewSession = async () => {
     setIsCreating(true);
     
     try {
-      const response = await fetch(`${API_BASE}/sessions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          settings: {
-            model: "gpt-4o-mini",
-            temperature: 0.7
-          }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase
+        .from('ai_chat_sessions')
+        .insert({
+          user_id: user.id,
+          name: `Чат ${sessions.length + 1}`,
+          model: 'gpt-4o-mini'
         })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setSessions(prev => [data, ...prev]);
+      onSessionChange(data.id);
+      
+      toast({
+        title: "Сессия создана",
+        description: "Новая сессия успешно создана"
       });
-
-      const data = await response.json();
-
-      if (data.success) {
-        const newSession: Session = {
-          id: data.session_id,
-          name: `Сессия ${sessions.length + 1}`,
-          created_at: new Date()
-        };
-        
-        setSessions(prev => [newSession, ...prev]);
-        onSessionChange(data.session_id);
-        
-        toast({
-          title: "Сессия создана",
-          description: "Новая сессия успешно создана"
-        });
-      } else {
-        throw new Error("Failed to create session");
-      }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating session:", error);
       toast({
         title: "Ошибка",
@@ -80,16 +88,32 @@ export const SessionManager = ({ currentSession, onSessionChange }: SessionManag
   const deleteSession = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    setSessions(prev => prev.filter(s => s.id !== sessionId));
-    
-    if (currentSession === sessionId) {
-      onSessionChange(null);
+    try {
+      const { error } = await supabase
+        .from('ai_chat_sessions')
+        .delete()
+        .eq('id', sessionId);
+
+      if (error) throw error;
+
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      
+      if (currentSession === sessionId) {
+        onSessionChange(null);
+      }
+      
+      toast({
+        title: "Сессия удалена",
+        description: "Сессия успешно удалена"
+      });
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось удалить сессию",
+        variant: "destructive"
+      });
     }
-    
-    toast({
-      title: "Сессия удалена",
-      description: "Сессия успешно удалена"
-    });
   };
 
   const currentSessionData = sessions.find(s => s.id === currentSession);
@@ -131,7 +155,7 @@ export const SessionManager = ({ currentSession, onSessionChange }: SessionManag
                 <div className="flex flex-col items-start flex-1">
                   <div className="font-medium">{session.name}</div>
                   <div className="text-sm text-gray-400">
-                    {session.created_at.toLocaleDateString("ru-RU")}
+                    {new Date(session.created_at).toLocaleDateString("ru-RU")}
                   </div>
                 </div>
                 <Button

@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, User, Bot, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ChatMessage } from "./ChatMessage";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   role: "user" | "assistant";
@@ -40,6 +41,8 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
   useEffect(() => {
     if (sessionId) {
       loadChatHistory();
+    } else {
+      setMessages([]);
     }
   }, [sessionId]);
 
@@ -47,17 +50,39 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
     if (!sessionId) return;
     
     try {
-      const response = await fetch(`${API_BASE}/sessions/${sessionId}/history`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setMessages(data.history.map((msg: any) => ({
-          ...msg,
-          timestamp: new Date()
-        })));
-      }
+      const { data, error } = await supabase
+        .from('ai_chat_messages')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      setMessages(data.map(msg => ({
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+        timestamp: new Date(msg.created_at)
+      })));
     } catch (error) {
       console.error("Error loading chat history:", error);
+    }
+  };
+
+  const saveMessage = async (role: "user" | "assistant", content: string) => {
+    if (!sessionId) return;
+
+    try {
+      const { error } = await supabase
+        .from('ai_chat_messages')
+        .insert({
+          session_id: sessionId,
+          role,
+          content
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error saving message:", error);
     }
   };
 
@@ -80,17 +105,41 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
     };
 
     setMessages(prev => [...prev, userMessage]);
+    await saveMessage("user", inputMessage);
+    
+    const messageToSend = inputMessage;
     setInputMessage("");
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE}/sessions/${sessionId}/chat`, {
+      // Создаем временную сессию для API
+      const sessionResponse = await fetch(`${API_BASE}/sessions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          message: inputMessage
+          settings: {
+            model: selectedModel,
+            temperature: 0.7
+          }
+        })
+      });
+
+      const sessionData = await sessionResponse.json();
+
+      if (!sessionData.success) {
+        throw new Error("Failed to create API session");
+      }
+
+      // Отправляем сообщение
+      const response = await fetch(`${API_BASE}/sessions/${sessionData.session_id}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: messageToSend
         })
       });
 
@@ -103,6 +152,7 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
           timestamp: new Date()
         };
         setMessages(prev => [...prev, assistantMessage]);
+        await saveMessage("assistant", data.response);
       } else {
         throw new Error("Failed to get response");
       }
