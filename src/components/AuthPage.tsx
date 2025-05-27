@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +45,7 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
       const templateParams = {
         to_email: email,
         auth_code: authCode,
-        user_email: email
+        from_name: "AkProject"
       };
 
       // Инициализируем EmailJS с реальными ключами
