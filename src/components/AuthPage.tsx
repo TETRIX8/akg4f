@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,12 +47,12 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
         user_email: email
       };
 
-      // Инициализируем EmailJS (замените на ваши реальные ключи)
-      emailjs.init("YOUR_PUBLIC_KEY"); // Замените на ваш Public Key
+      // Инициализируем EmailJS с реальными ключами
+      emailjs.init("aoak44iftoobsH4Xm");
 
       await emailjs.send(
-        "YOUR_SERVICE_ID", // Замените на ваш Service ID
-        "YOUR_TEMPLATE_ID", // Замените на ваш Template ID
+        "service_vcaxptx",
+        "template_tcl61en",
         templateParams
       );
 
