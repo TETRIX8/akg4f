@@ -53,7 +53,7 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
 
       await emailjs.send(
         "service_vcaxptx",
-        "template_tcl61en",
+        "template_91c1fvw",
         templateParams
       );
 
