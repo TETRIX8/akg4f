@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Mail, Lock, ArrowRight, Sparkles } from "lucide-react";
+import emailjs from '@emailjs/browser';
 
 interface AuthPageProps {
   onAuthSuccess: () => void;
@@ -40,22 +41,27 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
       localStorage.setItem('auth_email', email);
       localStorage.setItem('auth_code_time', Date.now().toString());
 
-      // Отправляем код на email
-      const response = await fetch('/functions/v1/send-auth-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code: authCode })
-      });
+      // Отправляем код через EmailJS
+      const templateParams = {
+        to_email: email,
+        auth_code: authCode,
+        user_email: email
+      };
 
-      if (response.ok) {
-        toast({
-          title: "Код отправлен",
-          description: "Проверьте вашу почту и введите код для входа",
-        });
-        setStep('code');
-      } else {
-        throw new Error('Ошибка отправки кода');
-      }
+      // Инициализируем EmailJS (замените на ваши реальные ключи)
+      emailjs.init("YOUR_PUBLIC_KEY"); // Замените на ваш Public Key
+
+      await emailjs.send(
+        "YOUR_SERVICE_ID", // Замените на ваш Service ID
+        "YOUR_TEMPLATE_ID", // Замените на ваш Template ID
+        templateParams
+      );
+
+      toast({
+        title: "Код отправлен",
+        description: "Проверьте вашу почту и введите код для входа",
+      });
+      setStep('code');
     } catch (error) {
       console.error('Error sending code:', error);
       toast({
