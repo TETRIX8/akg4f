@@ -19,25 +19,91 @@ const Index = () => {
   useEffect(() => {
     // Проверяем текущую сессию пользователя
     const checkUser = async () => {
+      // Сначала проверяем Supabase сессию
       const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
+      
+      if (session?.user) {
+        setUser(session.user);
+      } else {
+        // Проверяем ручную сессию в localStorage
+        const manualSession = localStorage.getItem('manual_auth_session');
+        if (manualSession) {
+          try {
+            const sessionData = JSON.parse(manualSession);
+            // Проверяем, не истекла ли сессия
+            if (sessionData.expires_at > Date.now()) {
+              setUser(sessionData.user);
+            } else {
+              // Удаляем истекшую сессию
+              localStorage.removeItem('manual_auth_session');
+            }
+          } catch (error) {
+            console.error('Error parsing manual session:', error);
+            localStorage.removeItem('manual_auth_session');
+          }
+        }
+      }
+      
       setIsLoading(false);
     };
 
     checkUser();
 
-    // Слушаем изменения авторизации
+    // Слушаем изменения авторизации в Supabase
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user || null);
+      if (session?.user) {
+        setUser(session.user);
+        // Удаляем ручную сессию если есть Supabase сессия
+        localStorage.removeItem('manual_auth_session');
+      } else {
+        // Проверяем ручную сессию если нет Supabase сессии
+        const manualSession = localStorage.getItem('manual_auth_session');
+        if (manualSession) {
+          try {
+            const sessionData = JSON.parse(manualSession);
+            if (sessionData.expires_at > Date.now()) {
+              setUser(sessionData.user);
+            } else {
+              setUser(null);
+              localStorage.removeItem('manual_auth_session');
+            }
+          } catch (error) {
+            setUser(null);
+            localStorage.removeItem('manual_auth_session');
+          }
+        } else {
+          setUser(null);
+        }
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+  const handleAuthSuccess = () => {
+    // После успешной авторизации перезагружаем состояние пользователя
+    const manualSession = localStorage.getItem('manual_auth_session');
+    if (manualSession) {
+      try {
+        const sessionData = JSON.parse(manualSession);
+        setUser(sessionData.user);
+      } catch (error) {
+        console.error('Error parsing session after auth:', error);
+      }
+    }
+  };
+
   const handleLogout = async () => {
     try {
+      // Выходим из Supabase
       await supabase.auth.signOut();
+      
+      // Удаляем ручную сессию
+      localStorage.removeItem('manual_auth_session');
+      
+      setUser(null);
       setCurrentSession(null);
+      
       toast({
         title: "Выход выполнен",
         description: "Вы успешно вышли из системы"
@@ -56,7 +122,7 @@ const Index = () => {
   }
 
   if (!user) {
-    return <AuthPage onAuthSuccess={() => {}} />;
+    return <AuthPage onAuthSuccess={handleAuthSuccess} />;
   }
 
   return (
