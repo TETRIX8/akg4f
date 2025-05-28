@@ -1,73 +1,240 @@
-# Welcome to your Lovable project
+Вот красивый и структурированный Markdown-файл на основе вашего текста:
 
-## Project info
+```markdown
+# API-сервер G4F - Документация
 
-**URL**: https://lovable.dev/projects/90318a13-b9d0-487a-bb3d-61a4a1901134
+API-сервер доступен по адресу:  
+[https://akgptapi.vercel.app/](https://akgptapi.vercel.app/)
 
-## How can I edit this code?
+## Основные эндпоинты
 
-There are several ways of editing your application.
+| Метод  | Эндпоинт                              | Описание                          |
+|--------|---------------------------------------|-----------------------------------|
+| GET    | `/`                                   | Проверка работоспособности API    |
+| GET    | `/api/models`                         | Список доступных моделей          |
+| GET    | `/api/sessions`                       | Все активные сессии               |
+| POST   | `/api/sessions`                       | Создание новой сессии             |
+| GET    | `/api/sessions/{session_id}`          | Информация о сессии               |
+| DELETE | `/api/sessions/{session_id}`          | Удаление сессии                   |
+| PUT    | `/api/sessions/{session_id}/settings` | Обновление настроек сессии        |
+| GET    | `/api/sessions/{session_id}/history`  | Получение истории диалога         |
+| DELETE | `/api/sessions/{session_id}/history`  | Очистка истории диалога           |
+| POST   | `/api/sessions/{session_id}/chat`     | Отправка сообщения и получение ответа |
+| GET    | `/api/health`                         | Расширенная проверка работоспособности |
 
-**Use Lovable**
+## Примеры запросов и ответов
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/90318a13-b9d0-487a-bb3d-61a4a1901134) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+### 1. Проверка работоспособности API
+**Запрос:**
+```http
+GET https://akgptapi.vercel.app/
 ```
 
-**Edit a file directly in GitHub**
+**Ответ:**
+```json
+{
+  "success": true,
+  "message": "G4F API Server is running",
+  "version": "1.0.0",
+  "timestamp": "2025-05-26T19:33:00.000Z"
+}
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### 2. Получение списка моделей
+**Запрос:**
+```http
+GET https://akgptapi.vercel.app/api/models
+```
 
-**Use GitHub Codespaces**
+**Ответ:**
+```json
+{
+  "success": true,
+  "models": [
+    {
+      "id": "gpt-3.5-turbo",
+      "name": "GPT-3.5 Turbo",
+      "description": "Fast and efficient"
+    },
+    {
+      "id": "gpt-4",
+      "name": "GPT-4",
+      "description": "Advanced reasoning"
+    },
+    {
+      "id": "gpt-4o",
+      "name": "GPT-4o",
+      "description": "Latest GPT-4 version"
+    },
+    {
+      "id": "gpt-4o-mini",
+      "name": "GPT-4o Mini",
+      "description": "Compact but powerful"
+    },
+    {
+      "id": "claude-3-opus",
+      "name": "Claude-3 Opus",
+      "description": "Anthropic's flagship model"
+    },
+    {
+      "id": "claude-3-sonnet",
+      "name": "Claude-3 Sonnet",
+      "description": "Balanced Claude model"
+    },
+    {
+      "id": "gemini-pro",
+      "name": "Gemini Pro",
+      "description": "Google's AI model"
+    }
+  ]
+}
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### 3. Создание новой сессии
+**Запрос:**
+```http
+POST https://akgptapi.vercel.app/api/sessions
+Content-Type: application/json
 
-## What technologies are used for this project?
+{
+  "settings": {
+    "model": "gpt-4o-mini",
+    "temperature": 0.7,
+    "max_tokens": 1000,
+    "web_search": false
+  }
+}
+```
 
-This project is built with:
+**Ответ:**
+```json
+{
+  "success": true,
+  "session_id": "550e8400-e29b-41d4-a716-446655440000",
+  "settings": {
+    "model": "gpt-4o-mini",
+    "temperature": 0.7,
+    "max_tokens": 1000,
+    "web_search": false
+  }
+}
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### 4. Отправка сообщения и получение ответа
+**Запрос:**
+```http
+POST https://akgptapi.vercel.app/api/sessions/550e8400-e29b-41d4-a716-446655440000/chat
+Content-Type: application/json
 
-## How can I deploy this project?
+{
+  "message": "Расскажи о квантовой физике"
+}
+```
 
-Simply open [Lovable](https://lovable.dev/projects/90318a13-b9d0-487a-bb3d-61a4a1901134) and click on Share -> Publish.
+**Ответ:**
+```json
+{
+  "success": true,
+  "response": "Квантовая физика — это раздел физики, изучающий свойства и поведение материи и энергии на атомном и субатомном уровнях. Она возникла в начале XX века и произвела революцию в нашем понимании микромира...",
+  "history": [
+    {
+      "role": "user",
+      "content": "Расскажи о квантовой физике"
+    },
+    {
+      "role": "assistant",
+      "content": "Квантовая физика — это раздел физики, изучающий свойства и поведение материи и энергии на атомном и субатомном уровнях. Она возникла в начале XX века и произвела революцию в нашем понимании микромира..."
+    }
+  ]
+}
+```
 
-## Can I connect a custom domain to my Lovable project?
+### 5. Получение истории диалога
+**Запрос:**
+```http
+GET https://akgptapi.vercel.app/api/sessions/550e8400-e29b-41d4-a716-446655440000/history
+```
 
-Yes, you can!
+**Ответ:**
+```json
+{
+  "success": true,
+  "history": [
+    {
+      "role": "user",
+      "content": "Расскажи о квантовой физике"
+    },
+    {
+      "role": "assistant",
+      "content": "Квантовая физика — это раздел физики, изучающий свойства и поведение материи и энергии на атомном и субатомном уровнях. Она возникла в начале XX века и произвела революцию в нашем понимании микромира..."
+    }
+  ]
+}
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### 6. Изменение настроек сессии
+**Запрос:**
+```http
+PUT https://akgptapi.vercel.app/api/sessions/550e8400-e29b-41d4-a716-446655440000/settings
+Content-Type: application/json
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+{
+  "model": "gpt-4",
+  "temperature": 0.9
+}
+```
+
+**Ответ:**
+```json
+{
+  "success": true,
+  "settings": {
+    "model": "gpt-4",
+    "temperature": 0.9,
+    "max_tokens": 1000,
+    "web_search": false
+  }
+}
+```
+
+### 7. Очистка истории диалога
+**Запрос:**
+```http
+DELETE https://akgptapi.vercel.app/api/sessions/550e8400-e29b-41d4-a716-446655440000/history
+```
+
+**Ответ:**
+```json
+{
+  "success": true,
+  "message": "History cleared"
+}
+```
+
+### 8. Удаление сессии
+**Запрос:**
+```http
+DELETE https://akgptapi.vercel.app/api/sessions/550e8400-e29b-41d4-a716-446655440000
+```
+
+**Ответ:**
+```json
+{
+  "success": true,
+  "message": "Session 550e8400-e29b-41d4-a716-446655440000 deleted"
+}
+```
+
+## Параметры запросов
+
+### Параметры создания сессии
+- `model` - ID модели (`gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, `gpt-4o-mini`, `claude-3-opus`, `claude-3-sonnet`, `gemini-pro`)
+- `temperature` - Температура генерации (0.0-1.0), влияет на креативность ответов
+- `max_tokens` - Максимальная длина ответа в токенах
+- `web_search` - Включение/отключение поиска в интернете (`true`/`false`)
+
+### Параметры отправки сообщения
+- `message` - Текст сообщения для отправки модели
+```
+
+Этот Markdown-файл хорошо структурирован, содержит подсветку синтаксиса для кода и JSON, а также удобочитаемые таблицы. Вы можете сохранить его как `G4F_API_Documentation.md` и использовать для своей документации.
