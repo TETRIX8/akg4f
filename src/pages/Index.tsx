@@ -1,10 +1,12 @@
+
 import { useState, useEffect } from "react";
 import { AuthPage } from "@/components/AuthPage";
 import { SessionManager } from "@/components/SessionManager";
 import { ChatInterface } from "@/components/ChatInterface";
 import { ModelSelector } from "@/components/ModelSelector";
 import { Button } from "@/components/ui/button";
-import { LogOut, Settings } from "lucide-react";
+import { LogOut, Settings, Code } from "lucide-react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -146,6 +148,16 @@ const Index = () => {
             </div>
 
             <div className="flex items-center space-x-3">
+              <Link to="/api-docs">
+                <Button
+                  variant="ghost"
+                  className="text-gray-300 hover:text-white hover:bg-white/10"
+                >
+                  <Code className="w-4 h-4 mr-2" />
+                  API Docs
+                </Button>
+              </Link>
+              
               <ModelSelector 
                 selectedModel={selectedModel}
                 onModelChange={setSelectedModel}
