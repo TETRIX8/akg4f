@@ -4,7 +4,7 @@
 # API-сервер G4F - Документация
 
 API-сервер доступен по адресу:  
-[https://akgptapi.vercel.app/](https://akgptapi.vercel.app/)
+https://akgptapi.vercel.app/
 
 ## Основные эндпоинты
 
