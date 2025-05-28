@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { AuthPage } from "@/components/AuthPage";
 import { SessionManager } from "@/components/SessionManager";
@@ -16,41 +15,47 @@ const Index = () => {
   const [selectedModel, setSelectedModel] = useState("gpt-4o-mini");
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Проверяем текущую сессию пользователя
-    const checkUser = async () => {
-      // Сначала проверяем Supabase сессию
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        setUser(session.user);
-      } else {
-        // Проверяем ручную сессию в localStorage
-        const manualSession = localStorage.getItem('manual_auth_session');
-        if (manualSession) {
-          try {
-            const sessionData = JSON.parse(manualSession);
-            // Проверяем, не истекла ли сессия
-            if (sessionData.expires_at > Date.now()) {
-              setUser(sessionData.user);
-            } else {
-              // Удаляем истекшую сессию
-              localStorage.removeItem('manual_auth_session');
-            }
-          } catch (error) {
-            console.error('Error parsing manual session:', error);
+  const checkUserSession = async () => {
+    console.log('Checking user session...');
+    
+    // Сначала проверяем Supabase сессию
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session?.user) {
+      console.log('Found Supabase session:', session.user);
+      setUser(session.user);
+    } else {
+      // Проверяем ручную сессию в localStorage
+      const manualSession = localStorage.getItem('manual_auth_session');
+      if (manualSession) {
+        try {
+          const sessionData = JSON.parse(manualSession);
+          console.log('Found manual session:', sessionData);
+          
+          // Проверяем, не истекла ли сессия
+          if (sessionData.expires_at > Date.now()) {
+            setUser(sessionData.user);
+          } else {
+            console.log('Manual session expired');
             localStorage.removeItem('manual_auth_session');
           }
+        } catch (error) {
+          console.error('Error parsing manual session:', error);
+          localStorage.removeItem('manual_auth_session');
         }
       }
-      
-      setIsLoading(false);
-    };
+    }
+    
+    setIsLoading(false);
+  };
 
-    checkUser();
+  useEffect(() => {
+    checkUserSession();
 
     // Слушаем изменения авторизации в Supabase
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event, session);
+      
       if (session?.user) {
         setUser(session.user);
         // Удаляем ручную сессию если есть Supabase сессия
@@ -81,16 +86,9 @@ const Index = () => {
   }, []);
 
   const handleAuthSuccess = () => {
-    // После успешной авторизации перезагружаем состояние пользователя
-    const manualSession = localStorage.getItem('manual_auth_session');
-    if (manualSession) {
-      try {
-        const sessionData = JSON.parse(manualSession);
-        setUser(sessionData.user);
-      } catch (error) {
-        console.error('Error parsing session after auth:', error);
-      }
-    }
+    console.log('Auth success callback triggered');
+    // Перезагружаем состояние пользователя
+    checkUserSession();
   };
 
   const handleLogout = async () => {

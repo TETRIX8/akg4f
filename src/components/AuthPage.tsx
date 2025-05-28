@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,45 +99,18 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
         throw new Error('Неверный код');
       }
 
-      // Создаем или получаем пользователя в Supabase без отправки реального OTP
-      // Используем signUp для создания пользователя если его нет, или signInWithPassword если есть
-      let authResult;
-      
-      try {
-        // Сначала пытаемся войти с временным паролем
-        const tempPassword = `temp_${email}_${Date.now()}`;
-        authResult = await supabase.auth.signInWithPassword({
+      // Создаем ручную сессию для пользователя
+      const userSession = {
+        user: {
+          id: `user_${email.replace('@', '_').replace('.', '_')}`,
           email: email,
-          password: tempPassword,
-        });
-        
-        // Если вход не удался, создаем нового пользователя
-        if (authResult.error) {
-          authResult = await supabase.auth.signUp({
-            email: email,
-            password: tempPassword,
-            options: {
-              emailRedirectTo: undefined, // Отключаем подтверждение email
-            }
-          });
-        }
-      } catch (error) {
-        // Если и создание не удалось, создаем сессию вручную
-        console.log('Creating manual session for:', email);
-        
-        // Сохраняем информацию о пользователе в localStorage для ручного управления сессией
-        const userSession = {
-          user: {
-            id: `user_${email.replace('@', '_').replace('.', '_')}`,
-            email: email,
-            created_at: new Date().toISOString(),
-          },
-          access_token: `manual_token_${Date.now()}`,
-          expires_at: Date.now() + (24 * 60 * 60 * 1000), // 24 часа
-        };
-        
-        localStorage.setItem('manual_auth_session', JSON.stringify(userSession));
-      }
+          created_at: new Date().toISOString(),
+        },
+        access_token: `manual_token_${Date.now()}`,
+        expires_at: Date.now() + (24 * 60 * 60 * 1000), // 24 часа
+      };
+      
+      localStorage.setItem('manual_auth_session', JSON.stringify(userSession));
 
       // Очищаем коды авторизации
       localStorage.removeItem('auth_code');
