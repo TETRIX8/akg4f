@@ -1,16 +1,20 @@
+
 import { useState, useEffect } from "react";
 import { AuthPage } from "@/components/AuthPage";
 import { SessionManager } from "@/components/SessionManager";
 import { ChatInterface } from "@/components/ChatInterface";
 import { ModelSelector } from "@/components/ModelSelector";
 import { Button } from "@/components/ui/button";
-import { LogOut, Settings } from "lucide-react";
+import { LogOut, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom";
+import WebGLLoader from "@/components/WebGLLoader";
 
 const Index = () => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showLoader, setShowLoader] = useState(true);
   const [currentSession, setCurrentSession] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState("gpt-4o-mini");
   const { toast } = useToast();
@@ -111,6 +115,14 @@ const Index = () => {
     }
   };
 
+  const handleLoaderComplete = () => {
+    setShowLoader(false);
+  };
+
+  if (showLoader) {
+    return <WebGLLoader onComplete={handleLoaderComplete} />;
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
@@ -127,39 +139,71 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Header */}
       <div className="border-b border-white/10 bg-black/20 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-3 sm:py-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg flex items-center justify-center">
-                  <span className="text-sm font-bold text-white">🚀</span>
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg flex items-center justify-center">
+                  <span className="text-xs sm:text-sm font-bold text-white">🚀</span>
                 </div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+                <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent truncate">
                   AkProject
                 </h1>
               </div>
               
-              <SessionManager 
-                currentSession={currentSession}
-                onSessionChange={setCurrentSession}
-              />
+              <div className="hidden sm:block">
+                <SessionManager 
+                  currentSession={currentSession}
+                  onSessionChange={setCurrentSession}
+                />
+              </div>
             </div>
 
-            <div className="flex items-center space-x-3">
-              <ModelSelector 
-                selectedModel={selectedModel}
-                onModelChange={setSelectedModel}
-              />
+            <div className="flex items-center space-x-1 sm:space-x-3 flex-wrap">
+              <div className="block sm:hidden w-full mb-2">
+                <SessionManager 
+                  currentSession={currentSession}
+                  onSessionChange={setCurrentSession}
+                />
+              </div>
+              
+              <div className="hidden sm:block">
+                <ModelSelector 
+                  selectedModel={selectedModel}
+                  onModelChange={setSelectedModel}
+                />
+              </div>
+              
+              <Link to="/api-docs">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-300 hover:text-white hover:bg-white/10 text-xs sm:text-sm"
+                >
+                  <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">API Docs</span>
+                  <span className="sm:hidden">API</span>
+                </Button>
+              </Link>
               
               <Button
                 onClick={handleLogout}
                 variant="ghost"
-                className="text-gray-300 hover:text-white hover:bg-white/10"
+                size="sm"
+                className="text-gray-300 hover:text-white hover:bg-white/10 text-xs sm:text-sm"
               >
-                <LogOut className="w-4 h-4 mr-2" />
-                Выйти
+                <LogOut className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Выйти</span>
+                <span className="sm:hidden">Exit</span>
               </Button>
             </div>
+          </div>
+          
+          <div className="block sm:hidden mt-2">
+            <ModelSelector 
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+            />
           </div>
         </div>
       </div>
