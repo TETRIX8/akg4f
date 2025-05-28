@@ -33,15 +33,56 @@ export const SessionManager = ({ currentSession, onSessionChange }: SessionManag
     loadSessions();
   }, []);
 
+  const getCurrentUser = async () => {
+    // Сначала проверяем Supabase сессию
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      return user;
+    }
+
+    // Если нет Supabase сессии, проверяем ручную сессию
+    const manualSession = localStorage.getItem('manual_auth_session');
+    if (manualSession) {
+      try {
+        const sessionData = JSON.parse(manualSession);
+        if (sessionData.expires_at > Date.now()) {
+          return sessionData.user;
+        } else {
+          // Сессия истекла
+          localStorage.removeItem('manual_auth_session');
+        }
+      } catch (error) {
+        console.error('Error parsing manual session:', error);
+        localStorage.removeItem('manual_auth_session');
+      }
+    }
+
+    return null;
+  };
+
   const loadSessions = async () => {
     try {
-      const { data, error } = await supabase
-        .from('ai_chat_sessions')
-        .select('*')
-        .order('updated_at', { ascending: false });
+      // Для ручных сессий используем localStorage
+      const user = await getCurrentUser();
+      if (!user) return;
 
-      if (error) throw error;
-      setSessions(data || []);
+      // Пытаемся загрузить из Supabase только если есть Supabase пользователь
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+      if (supabaseUser) {
+        const { data, error } = await supabase
+          .from('ai_chat_sessions')
+          .select('*')
+          .order('updated_at', { ascending: false });
+
+        if (error) throw error;
+        setSessions(data || []);
+      } else {
+        // Для ручных сессий загружаем из localStorage
+        const localSessions = localStorage.getItem(`sessions_${user.id}`);
+        if (localSessions) {
+          setSessions(JSON.parse(localSessions));
+        }
+      }
     } catch (error) {
       console.error('Error loading sessions:', error);
     }
@@ -51,23 +92,50 @@ export const SessionManager = ({ currentSession, onSessionChange }: SessionManag
     setIsCreating(true);
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      const user = await getCurrentUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
 
-      const { data, error } = await supabase
-        .from('ai_chat_sessions')
-        .insert({
-          user_id: user.id,
+      console.log('Creating session for user:', user);
+
+      // Проверяем, это Supabase пользователь или ручной
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+      
+      if (supabaseUser) {
+        // Создаем сессию в Supabase
+        const { data, error } = await supabase
+          .from('ai_chat_sessions')
+          .insert({
+            user_id: supabaseUser.id,
+            name: `Чат ${sessions.length + 1}`,
+            model: 'gpt-4o-mini'
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setSessions(prev => [data, ...prev]);
+        onSessionChange(data.id);
+      } else {
+        // Создаем ручную сессию в localStorage
+        const newSession = {
+          id: `session_${Date.now()}`,
           name: `Чат ${sessions.length + 1}`,
-          model: 'gpt-4o-mini'
-        })
-        .select()
-        .single();
+          model: 'gpt-4o-mini',
+          created_at: new Date().toISOString(),
+          user_id: user.id
+        };
 
-      if (error) throw error;
-
-      setSessions(prev => [data, ...prev]);
-      onSessionChange(data.id);
+        const updatedSessions = [newSession, ...sessions];
+        setSessions(updatedSessions);
+        
+        // Сохраняем в localStorage
+        localStorage.setItem(`sessions_${user.id}`, JSON.stringify(updatedSessions));
+        
+        onSessionChange(newSession.id);
+      }
       
       toast({
         title: "Сессия создана",
@@ -89,12 +157,25 @@ export const SessionManager = ({ currentSession, onSessionChange }: SessionManag
     e.stopPropagation();
     
     try {
-      const { error } = await supabase
-        .from('ai_chat_sessions')
-        .delete()
-        .eq('id', sessionId);
+      const user = await getCurrentUser();
+      if (!user) return;
 
-      if (error) throw error;
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+      
+      if (supabaseUser) {
+        // Удаляем из Supabase
+        const { error } = await supabase
+          .from('ai_chat_sessions')
+          .delete()
+          .eq('id', sessionId);
+
+        if (error) throw error;
+      } else {
+        // Удаляем из localStorage
+        const updatedSessions = sessions.filter(s => s.id !== sessionId);
+        setSessions(updatedSessions);
+        localStorage.setItem(`sessions_${user.id}`, JSON.stringify(updatedSessions));
+      }
 
       setSessions(prev => prev.filter(s => s.id !== sessionId));
       
