@@ -5,12 +5,20 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, User, Bot, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ChatMessage } from "./ChatMessage";
+import { FileUpload } from "./FileUpload";
 import { chatDB } from "@/utils/indexedDBUtils";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp?: Date;
+}
+
+interface UploadedFile {
+  name: string;
+  content: string;
+  type: string;
+  size: number;
 }
 
 interface ChatInterfaceProps {
@@ -22,6 +30,7 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -95,7 +104,7 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
   };
 
   const sendMessage = async () => {
-    if (!inputMessage.trim() || !sessionId) {
+    if ((!inputMessage.trim() && !uploadedFile) || !sessionId) {
       if (!sessionId) {
         toast({
           title: "Создайте сессию",
@@ -106,21 +115,27 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
       return;
     }
 
+    // Формируем сообщение с файлом, если он есть
+    let messageContent = inputMessage;
+    if (uploadedFile) {
+      messageContent = `${inputMessage}\n\n[Файл: ${uploadedFile.name}]\n\`\`\`\n${uploadedFile.content}\n\`\`\``;
+    }
+
     const userMessage: Message = {
       role: "user",
-      content: inputMessage,
+      content: messageContent,
       timestamp: new Date()
     };
 
     setMessages(prev => [...prev, userMessage]);
-    await saveMessage("user", inputMessage);
+    await saveMessage("user", messageContent);
     
-    const messageToSend = inputMessage;
+    const messageToSend = messageContent;
     setInputMessage("");
+    setUploadedFile(null);
     setIsLoading(true);
 
     try {
-      // Создаем временную сессию для API
       const sessionResponse = await fetch(`${API_BASE}/sessions`, {
         method: "POST",
         headers: {
@@ -140,7 +155,6 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
         throw new Error("Failed to create API session");
       }
 
-      // Отправляем сообщение
       const response = await fetch(`${API_BASE}/sessions/${sessionData.session_id}/chat`, {
         method: "POST",
         headers: {
@@ -183,6 +197,14 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
     }
   };
 
+  const handleFileUploaded = (file: UploadedFile) => {
+    setUploadedFile(file);
+  };
+
+  const handleFileRemoved = () => {
+    setUploadedFile(null);
+  };
+
   return (
     <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full p-6">
       {/* Chat Messages */}
@@ -196,7 +218,7 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
                   Начните новый разговор
                 </h3>
                 <p className="text-gray-400">
-                  Задайте любой вопрос и получите ответ от AI-ассистента
+                  Задайте любой вопрос, отправьте файл или получите ответ от AI-ассистента
                 </p>
                 <div className="mt-4 text-sm text-cyan-400">
                   💾 Все сообщения сохраняются локально
@@ -228,6 +250,12 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
 
       {/* Input Area */}
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10 animate-fade-in">
+        <FileUpload 
+          onFileUploaded={handleFileUploaded}
+          onFileRemoved={handleFileRemoved}
+          uploadedFile={uploadedFile}
+        />
+        
         <div className="flex space-x-4">
           <Input
             value={inputMessage}
@@ -239,7 +267,7 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
           />
           <Button
             onClick={sendMessage}
-            disabled={isLoading || !inputMessage.trim() || !sessionId}
+            disabled={isLoading || (!inputMessage.trim() && !uploadedFile) || !sessionId}
             className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 rounded-xl px-6 transition-all duration-200 hover:scale-105"
           >
             {isLoading ? (
