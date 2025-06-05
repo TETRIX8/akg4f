@@ -1,7 +1,7 @@
 
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { file, upload, X } from "lucide-react";
+import { File, Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface UploadedFile {
@@ -55,10 +55,10 @@ export const FileUpload = ({ onFileUploaded, onFileRemoved, uploadedFile }: File
       return;
     }
 
-    if (file.size > 1024 * 1024) { // 1MB limit
+    if (file.size > 25 * 1024 * 1024) { // 25MB limit
       toast({
         title: "Файл слишком большой",
-        description: "Максимальный размер файла: 1MB",
+        description: "Максимальный размер файла: 25MB",
         variant: "destructive"
       });
       return;
@@ -131,7 +131,7 @@ export const FileUpload = ({ onFileUploaded, onFileRemoved, uploadedFile }: File
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-cyan-500/20 rounded-lg flex items-center justify-center">
-              <file className="w-4 h-4 text-cyan-400" />
+              <File className="w-4 h-4 text-cyan-400" />
             </div>
             <div>
               <p className="text-sm font-medium text-white">{uploadedFile.name}</p>
@@ -175,12 +175,12 @@ export const FileUpload = ({ onFileUploaded, onFileRemoved, uploadedFile }: File
       />
       
       <div className="text-center">
-        <upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+        <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
         <p className="text-sm text-gray-300 mb-1">
           {isReading ? 'Чтение файла...' : 'Перетащите файл или нажмите для выбора'}
         </p>
         <p className="text-xs text-gray-500">
-          Поддерживаются: txt, md, json, html, css, js, xml, csv (до 1MB)
+          Поддерживаются: txt, md, json, html, css, js, xml, csv (до 25MB)
         </p>
       </div>
     </div>
