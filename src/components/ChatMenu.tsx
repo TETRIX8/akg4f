@@ -153,7 +153,7 @@ export const ChatMenu = ({ currentSession, onSessionChange, onNewSession }: Chat
         <DropdownMenuSeparator className="bg-slate-600/30" />
 
         {/* Список сессий */}
-        <div className="max-h-64 overflow-y-auto custom-scrollbar">
+        <div className="max-h-64 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-600 hover:scrollbar-thumb-slate-500">
           {sessions.length === 0 ? (
             <div className="p-4 text-center text-slate-400">
               <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -203,26 +203,6 @@ export const ChatMenu = ({ currentSession, onSessionChange, onNewSession }: Chat
             ))
           )}
         </div>
-
-        <style jsx>{`
-          .custom-scrollbar {
-            scrollbar-width: thin;
-            scrollbar-color: #475569 transparent;
-          }
-          .custom-scrollbar::-webkit-scrollbar {
-            width: 4px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb {
-            background-color: #475569;
-            border-radius: 2px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background-color: #64748b;
-          }
-        `}</style>
       </DropdownMenuContent>
     </DropdownMenu>
   );
