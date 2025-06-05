@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, User, Bot, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ChatMessage } from "./ChatMessage";
-import { supabase } from "@/integrations/supabase/client";
+import { chatDB } from "@/utils/indexedDBUtils";
 
 interface Message {
   role: "user" | "assistant";
@@ -50,15 +49,10 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
     if (!sessionId) return;
     
     try {
-      const { data, error } = await supabase
-        .from('ai_chat_messages')
-        .select('*')
-        .eq('session_id', sessionId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-
-      setMessages(data.map(msg => ({
+      // Загружаем из IndexedDB
+      const dbMessages = await chatDB.getSessionMessages(sessionId);
+      
+      setMessages(dbMessages.map(msg => ({
         role: msg.role as "user" | "assistant",
         content: msg.content,
         timestamp: new Date(msg.created_at)
@@ -72,15 +66,29 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
     if (!sessionId) return;
 
     try {
-      const { error } = await supabase
-        .from('ai_chat_messages')
-        .insert({
-          session_id: sessionId,
-          role,
-          content
-        });
+      const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const now = new Date().toISOString();
+      
+      // Сохраняем сообщение в IndexedDB
+      await chatDB.saveMessage({
+        id: messageId,
+        session_id: sessionId,
+        role,
+        content,
+        created_at: now
+      });
 
-      if (error) throw error;
+      // Обновляем сессию с новым временем и счетчиком
+      const sessions = await chatDB.getSessions();
+      const currentSession = sessions.find(s => s.id === sessionId);
+      
+      if (currentSession) {
+        await chatDB.saveSession({
+          ...currentSession,
+          updated_at: now,
+          message_count: (currentSession.message_count || 0) + 1
+        });
+      }
     } catch (error) {
       console.error("Error saving message:", error);
     }
@@ -182,27 +190,31 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
         <ScrollArea className="h-full" ref={scrollAreaRef}>
           <div className="space-y-4 p-4">
             {messages.length === 0 ? (
-              <div className="text-center py-12">
-                <Bot className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <div className="text-center py-12 animate-fade-in">
+                <Bot className="w-16 h-16 text-gray-400 mx-auto mb-4 animate-pulse" />
                 <h3 className="text-xl font-semibold text-gray-300 mb-2">
                   Начните новый разговор
                 </h3>
                 <p className="text-gray-400">
                   Задайте любой вопрос и получите ответ от AI-ассистента
                 </p>
+                <div className="mt-4 text-sm text-cyan-400">
+                  💾 Все сообщения сохраняются локально
+                </div>
               </div>
             ) : (
               messages.map((message, index) => (
-                <ChatMessage
-                  key={index}
-                  message={message}
-                  isBot={message.role === "assistant"}
-                />
+                <div key={index} className="animate-fade-in">
+                  <ChatMessage
+                    message={message}
+                    isBot={message.role === "assistant"}
+                  />
+                </div>
               ))
             )}
             
             {isLoading && (
-              <div className="flex items-center space-x-2 text-gray-400">
+              <div className="flex items-center space-x-2 text-gray-400 animate-fade-in">
                 <Bot className="w-6 h-6" />
                 <div className="flex items-center space-x-1">
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -215,20 +227,20 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
       </div>
 
       {/* Input Area */}
-      <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+      <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10 animate-fade-in">
         <div className="flex space-x-4">
           <Input
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Введите ваше сообщение..."
-            className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-gray-400 rounded-xl"
+            className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-gray-400 rounded-xl transition-all duration-200 focus:bg-white/15"
             disabled={isLoading || !sessionId}
           />
           <Button
             onClick={sendMessage}
             disabled={isLoading || !inputMessage.trim() || !sessionId}
-            className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 rounded-xl px-6"
+            className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 rounded-xl px-6 transition-all duration-200 hover:scale-105"
           >
             {isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -239,7 +251,7 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
         </div>
         
         {!sessionId && (
-          <p className="text-sm text-yellow-400 mt-2 flex items-center">
+          <p className="text-sm text-yellow-400 mt-2 flex items-center animate-pulse">
             ⚠️ Создайте сессию для начала чата
           </p>
         )}
