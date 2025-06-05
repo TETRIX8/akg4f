@@ -206,21 +206,21 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
   };
 
   return (
-    <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full p-6">
-      {/* Chat Messages */}
-      <div className="flex-1 mb-6">
+    <div className="flex flex-col h-full max-w-4xl mx-auto w-full">
+      {/* Chat Messages - фиксированная высота с прокруткой */}
+      <div className="flex-1 overflow-hidden px-4 pt-4 pb-2">
         <ScrollArea className="h-full" ref={scrollAreaRef}>
-          <div className="space-y-4 p-4">
+          <div className="space-y-4 pr-4">
             {messages.length === 0 ? (
-              <div className="text-center py-12 animate-fade-in">
-                <Bot className="w-16 h-16 text-gray-400 mx-auto mb-4 animate-pulse" />
-                <h3 className="text-xl font-semibold text-gray-300 mb-2">
+              <div className="text-center py-8 sm:py-12 animate-fade-in">
+                <Bot className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-4 animate-pulse" />
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-300 mb-2">
                   Начните новый разговор
                 </h3>
-                <p className="text-gray-400">
+                <p className="text-sm sm:text-base text-gray-400 px-4">
                   Задайте любой вопрос, отправьте файл или получите ответ от AI-ассистента
                 </p>
-                <div className="mt-4 text-sm text-cyan-400">
+                <div className="mt-4 text-xs sm:text-sm text-cyan-400">
                   💾 Все сообщения сохраняются локально
                 </div>
               </div>
@@ -236,11 +236,11 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
             )}
             
             {isLoading && (
-              <div className="flex items-center space-x-2 text-gray-400 animate-fade-in">
-                <Bot className="w-6 h-6" />
+              <div className="flex items-center space-x-2 text-gray-400 animate-fade-in px-2">
+                <Bot className="w-5 h-5 sm:w-6 sm:h-6" />
                 <div className="flex items-center space-x-1">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>AI думает...</span>
+                  <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
+                  <span className="text-sm sm:text-base">AI думает...</span>
                 </div>
               </div>
             )}
@@ -248,41 +248,43 @@ export const ChatInterface = ({ sessionId, selectedModel }: ChatInterfaceProps) 
         </ScrollArea>
       </div>
 
-      {/* Input Area */}
-      <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10 animate-fade-in">
-        <FileUpload 
-          onFileUploaded={handleFileUploaded}
-          onFileRemoved={handleFileRemoved}
-          uploadedFile={uploadedFile}
-        />
-        
-        <div className="flex space-x-4">
-          <Input
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Введите ваше сообщение..."
-            className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-gray-400 rounded-xl transition-all duration-200 focus:bg-white/15"
-            disabled={isLoading || !sessionId}
+      {/* Input Area - фиксированная снизу */}
+      <div className="border-t border-white/10 bg-black/20 backdrop-blur-sm p-3 sm:p-4">
+        <div className="bg-white/5 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-white/10 animate-fade-in">
+          <FileUpload 
+            onFileUploaded={handleFileUploaded}
+            onFileRemoved={handleFileRemoved}
+            uploadedFile={uploadedFile}
           />
-          <Button
-            onClick={sendMessage}
-            disabled={isLoading || (!inputMessage.trim() && !uploadedFile) || !sessionId}
-            className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 rounded-xl px-6 transition-all duration-200 hover:scale-105"
-          >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </Button>
+          
+          <div className="flex space-x-2 sm:space-x-4">
+            <Input
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Введите ваше сообщение..."
+              className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-gray-400 rounded-lg sm:rounded-xl transition-all duration-200 focus:bg-white/15 text-sm sm:text-base h-10 sm:h-11"
+              disabled={isLoading || !sessionId}
+            />
+            <Button
+              onClick={sendMessage}
+              disabled={isLoading || (!inputMessage.trim() && !uploadedFile) || !sessionId}
+              className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 rounded-lg sm:rounded-xl px-4 sm:px-6 transition-all duration-200 hover:scale-105 h-10 sm:h-11 min-w-[44px] sm:min-w-[48px]"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+          
+          {!sessionId && (
+            <p className="text-xs sm:text-sm text-yellow-400 mt-2 flex items-center animate-pulse">
+              ⚠️ Создайте сессию для начала чата
+            </p>
+          )}
         </div>
-        
-        {!sessionId && (
-          <p className="text-sm text-yellow-400 mt-2 flex items-center animate-pulse">
-            ⚠️ Создайте сессию для начала чата
-          </p>
-        )}
       </div>
     </div>
   );

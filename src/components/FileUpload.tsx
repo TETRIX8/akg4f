@@ -129,12 +129,12 @@ export const FileUpload = ({ onFileUploaded, onFileRemoved, uploadedFile }: File
     return (
       <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3 mb-3 animate-fade-in">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-cyan-500/20 rounded-lg flex items-center justify-center">
-              <File className="w-4 h-4 text-cyan-400" />
+          <div className="flex items-center space-x-3 min-w-0 flex-1">
+            <div className="w-6 h-6 sm:w-8 sm:h-8 bg-cyan-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <File className="w-3 h-3 sm:w-4 sm:h-4 text-cyan-400" />
             </div>
-            <div>
-              <p className="text-sm font-medium text-white">{uploadedFile.name}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-white truncate">{uploadedFile.name}</p>
               <p className="text-xs text-cyan-400">{formatFileSize(uploadedFile.size)}</p>
             </div>
           </div>
@@ -142,7 +142,7 @@ export const FileUpload = ({ onFileUploaded, onFileRemoved, uploadedFile }: File
             variant="ghost"
             size="sm"
             onClick={onFileRemoved}
-            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1 h-6 w-6"
+            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1 h-6 w-6 flex-shrink-0 ml-2"
           >
             <X className="w-3 h-3" />
           </Button>
@@ -154,7 +154,7 @@ export const FileUpload = ({ onFileUploaded, onFileRemoved, uploadedFile }: File
   return (
     <div
       className={`
-        border-2 border-dashed rounded-lg p-4 mb-3 transition-all duration-200 cursor-pointer
+        border-2 border-dashed rounded-lg p-3 sm:p-4 mb-3 transition-all duration-200 cursor-pointer
         ${isDragging 
           ? 'border-cyan-400 bg-cyan-500/10' 
           : 'border-white/20 hover:border-cyan-400/50 hover:bg-white/5'
@@ -175,8 +175,8 @@ export const FileUpload = ({ onFileUploaded, onFileRemoved, uploadedFile }: File
       />
       
       <div className="text-center">
-        <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-        <p className="text-sm text-gray-300 mb-1">
+        <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 mx-auto mb-2" />
+        <p className="text-xs sm:text-sm text-gray-300 mb-1">
           {isReading ? 'Чтение файла...' : 'Перетащите файл или нажмите для выбора'}
         </p>
         <p className="text-xs text-gray-500">
