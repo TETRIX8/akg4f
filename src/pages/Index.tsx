@@ -5,7 +5,7 @@ import { SessionManager } from "@/components/SessionManager";
 import { ChatInterface } from "@/components/ChatInterface";
 import { ModelSelector } from "@/components/ModelSelector";
 import { Button } from "@/components/ui/button";
-import { LogOut, FileText } from "lucide-react";
+import { LogOut, FileText, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -173,6 +173,18 @@ const Index = () => {
                   onModelChange={setSelectedModel}
                 />
               </div>
+              
+              <Link to="/super-chat">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-300 hover:text-white hover:bg-gradient-to-r hover:from-cyan-500/20 hover:to-purple-500/20 text-xs sm:text-sm border border-cyan-500/30"
+                >
+                  <Zap className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Супер Чат</span>
+                  <span className="sm:hidden">AI</span>
+                </Button>
+              </Link>
               
               <Link to="/api-docs">
                 <Button
