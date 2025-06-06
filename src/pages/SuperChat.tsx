@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Play, Pause, CheckCircle, Clock, Loader2, Code, Key, Info, SkipForward, Edit3 } from "lucide-react";
+import { ArrowLeft, Play, CheckCircle, Clock, Loader2, Code, Key, Info, SkipForward, Edit3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -20,6 +20,7 @@ interface TaskStep {
     type: "api-key" | "info" | "confirmation";
     prompt: string;
     placeholder?: string;
+    required?: boolean; // Новое поле для определения обязательности
   };
 }
 
@@ -105,19 +106,22 @@ const SuperChat = () => {
       "requiredInput": {
         "type": "api-key|info|confirmation",
         "prompt": "Что нужно запросить у пользователя",
-        "placeholder": "Подсказка для ввода"
+        "placeholder": "Подсказка для ввода",
+        "required": true|false
       }
     }
   ]
 }
 
-Определи тип каждого этапа:
-- "code-generation" - если нужно написать код
-- "api-request" - если нужен API токен для внешнего сервиса
-- "info-request" - если нужна дополнительная информация от пользователя
-- "analysis" - если нужно проанализировать что-то
+ВАЖНО: Определи правильно нужен ли ОБЯЗАТЕЛЬНЫЙ ввод от пользователя:
+- "required": true - только если БЕЗ этой информации задачу выполнить НЕВОЗМОЖНО (API ключи для внешних сервисов, критически важные детали)
+- "required": false - если можно выполнить с разумными значениями по умолчанию
 
-Если для этапа нужен ввод от пользователя, добавь requiredInput с подходящим типом.
+Типы этапов:
+- "code-generation" - создание кода (обычно не требует ввода)
+- "api-request" - вызов внешнего API (может требовать API ключ)
+- "info-request" - нужна информация от пользователя (только если критично)
+- "analysis" - анализ (обычно не требует ввода)
 `;
 
       const response = await fetch(`${API_BASE}/sessions/${sessionData.session_id}/chat`, {
@@ -223,13 +227,18 @@ const SuperChat = () => {
     setPlan(updatedPlan);
 
     try {
-      // Проверяем, нужен ли пользовательский ввод
-      if (step.requiredInput) {
-        updatedPlan.steps[stepIndex].status = "waiting-input";
-        setPlan(updatedPlan);
-        setCurrentInputStep(step);
-        setShowInputDialog(true);
-        return; // Останавливаем выполнение до получения ввода
+      // Проверяем, нужен ли ОБЯЗАТЕЛЬНЫЙ пользовательский ввод
+      if (step.requiredInput && step.requiredInput.required !== false) {
+        // Проверяем, есть ли уже нужная информация
+        const hasRequiredData = checkIfHasRequiredData(step);
+        
+        if (!hasRequiredData) {
+          updatedPlan.steps[stepIndex].status = "waiting-input";
+          setPlan(updatedPlan);
+          setCurrentInputStep(step);
+          setShowInputDialog(true);
+          return; // Останавливаем выполнение до получения ввода
+        }
       }
 
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -240,12 +249,10 @@ const SuperChat = () => {
 
       switch (step.type) {
         case "code-generation":
-          // Генерируем реальный код
           const codeResult = await generateCodeForStep(step);
           code = codeResult.code;
           result = codeResult.description;
           
-          // Сохраняем созданные файлы
           if (codeResult.files) {
             Object.assign(projectFiles, codeResult.files);
             setProjectFiles({...projectFiles});
@@ -253,15 +260,18 @@ const SuperChat = () => {
           break;
 
         case "api-request":
-          // Выполняем API запрос если есть токен
           const apiResult = await executeApiRequest(step);
           result = apiResult;
           break;
 
         case "analysis":
-          // Выполняем анализ
           const analysisResult = await performAnalysis(step);
           result = analysisResult;
+          break;
+
+        case "info-request":
+          // Для info-request генерируем разумный результат по умолчанию
+          result = generateDefaultInfoResult(step);
           break;
 
         default:
@@ -282,8 +292,47 @@ const SuperChat = () => {
     }
   };
 
+  const checkIfHasRequiredData = (step: TaskStep) => {
+    if (!step.requiredInput) return true;
+
+    switch (step.requiredInput.type) {
+      case "api-key":
+        const requiredService = step.description.toLowerCase();
+        if (requiredService.includes("openai") && apiTokens["OPENAI_API_KEY"]) return true;
+        if (requiredService.includes("stripe") && apiTokens["STRIPE_API_KEY"]) return true;
+        return false;
+
+      case "info":
+        return step.requiredInput.required === false;
+
+      case "confirmation":
+        return step.requiredInput.required === false;
+
+      default:
+        return true;
+    }
+  };
+
+  const generateDefaultInfoResult = (step: TaskStep) => {
+    const defaults = {
+      "название": "MyApp",
+      "цвет": "синий",
+      "стиль": "современный",
+      "размер": "средний",
+      "формат": "стандартный"
+    };
+
+    const stepDesc = step.description.toLowerCase();
+    for (const [key, value] of Object.entries(defaults)) {
+      if (stepDesc.includes(key)) {
+        return `Использовано значение по умолчанию: ${value}`;
+      }
+    }
+
+    return `Этап выполнен с базовыми настройками. ${step.description}`;
+  };
+
   const generateCodeForStep = async (step: TaskStep) => {
-    // Симуляция генерации кода на основе описания этапа
     const codeExamples = {
       "component": `import React from 'react';
 import { Button } from '@/components/ui/button';
@@ -336,7 +385,6 @@ export default NewComponent;`,
   };
 
   const executeApiRequest = async (step: TaskStep) => {
-    // Проверяем наличие необходимых API токенов
     const requiredService = step.description.toLowerCase();
     
     if (requiredService.includes("openai") && !apiTokens["OPENAI_API_KEY"]) {
@@ -347,13 +395,11 @@ export default NewComponent;`,
       throw new Error("Требуется Stripe API ключ");
     }
 
-    // Симуляция API запроса
     await new Promise(resolve => setTimeout(resolve, 2000));
     return `API запрос выполнен успешно. Получены данные для ${step.title}`;
   };
 
   const performAnalysis = async (step: TaskStep) => {
-    // Симуляция анализа
     await new Promise(resolve => setTimeout(resolve, 1500));
     return `Анализ завершен: ${step.description}. Найдены ключевые insights и рекомендации.`;
   };
@@ -368,7 +414,6 @@ export default NewComponent;`,
       return;
     }
 
-    // Сохраняем введенные данные
     if (currentInputStep.requiredInput?.type === "api-key") {
       const keyName = inputValue.includes("sk-") ? "OPENAI_API_KEY" : 
                      inputValue.includes("pk_") ? "STRIPE_API_KEY" : "API_KEY";
@@ -378,12 +423,10 @@ export default NewComponent;`,
     setShowInputDialog(false);
     setInputValue("");
 
-    // Продолжаем выполнение этапа
     if (plan && currentStepIndex >= 0) {
       const stepIndex = plan.steps.findIndex(s => s.id === currentInputStep.id);
       if (stepIndex >= 0) {
         await executeStep(currentInputStep, stepIndex);
-        // Переходим к следующему этапу
         continueExecution(stepIndex + 1);
       }
     }
@@ -395,7 +438,6 @@ export default NewComponent;`,
     if (!plan) return;
 
     for (let i = fromIndex; i < plan.steps.length; i++) {
-      // Пропускаем уже выполненные или пропущенные этапы
       if (plan.steps[i].status === "completed" || plan.steps[i].status === "skipped") {
         continue;
       }
@@ -403,13 +445,11 @@ export default NewComponent;`,
       setCurrentStepIndex(i);
       await executeStep(plan.steps[i], i);
       
-      // Если этап ждет ввода, прерываем выполнение
       if (plan.steps[i].status === "waiting-input") {
         break;
       }
     }
 
-    // Проверяем, все ли этапы завершены
     const allCompleted = plan.steps.every(step => 
       step.status === "completed" || step.status === "skipped"
     );
@@ -528,11 +568,11 @@ export default NewComponent;`,
                     <span className="text-2xl">🤖</span>
                   </div>
                   <h3 className="text-xl font-semibold text-gray-300 mb-2">
-                    Автоматизированное планирование и выполнение
+                    Умное автоматизированное выполнение
                   </h3>
                   <p className="text-gray-400 px-4 max-w-2xl mx-auto">
-                    Опишите задачу, и AI создаст детальный план с реальным выполнением каждого этапа. 
-                    Система автоматически запросит необходимые API ключи и дополнительную информацию.
+                    Опишите задачу, и AI создаст план, запросив только критически важную информацию. 
+                    Остальные этапы выполнятся автоматически с разумными значениями по умолчанию.
                   </p>
                 </div>
               ) : (
@@ -581,9 +621,13 @@ export default NewComponent;`,
                                 <div className="flex items-center space-x-2">
                                   <h3 className="font-medium text-white">{step.title}</h3>
                                   {getTypeIcon(step.type)}
+                                  {step.requiredInput && step.requiredInput.required !== false && (
+                                    <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded">
+                                      Требует ввода
+                                    </span>
+                                  )}
                                 </div>
                                 
-                                {/* Кнопки управления этапом */}
                                 <div className="flex items-center space-x-2">
                                   <Button
                                     size="sm"
@@ -614,7 +658,7 @@ export default NewComponent;`,
                               
                               {step.status === "waiting-input" && step.requiredInput && (
                                 <div className="text-sm text-yellow-300 bg-yellow-500/10 rounded-lg p-2 mb-2">
-                                  ⏳ Ожидает ввода: {step.requiredInput.prompt}
+                                  ⏳ Ожидает обязательного ввода: {step.requiredInput.prompt}
                                 </div>
                               )}
                               
@@ -709,7 +753,7 @@ export default NewComponent;`,
             </div>
             
             <p className="text-xs text-gray-400 mt-2">
-              💡 AI создаст детальный план и реально выполнит каждый этап с запросом необходимых данных
+              💡 AI выполнит максимум автоматически, запросив только критически важную информацию
             </p>
           </div>
         </div>
@@ -721,11 +765,13 @@ export default NewComponent;`,
           <DialogHeader>
             <DialogTitle className="text-white">
               {currentInputStep?.requiredInput?.type === "api-key" ? "🔑 Требуется API ключ" : 
-               currentInputStep?.requiredInput?.type === "info" ? "ℹ️ Дополнительная информация" : 
-               "✅ Подтверждение"}
+               currentInputStep?.requiredInput?.type === "info" ? "ℹ️ Критически важная информация" : 
+               "✅ Необходимое подтверждение"}
             </DialogTitle>
             <DialogDescription className="text-gray-300">
               {currentInputStep?.requiredInput?.prompt}
+              <br />
+              <span className="text-yellow-300 text-sm">⚠️ Без этой информации задачу выполнить невозможно</span>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -748,7 +794,7 @@ export default NewComponent;`,
             )}
             <div className="flex space-x-2">
               <Button onClick={handleInputSubmit} className="flex-1">
-                Продолжить
+                Продолжить выполнение
               </Button>
               <Button variant="outline" onClick={() => setShowInputDialog(false)}>
                 Отмена
