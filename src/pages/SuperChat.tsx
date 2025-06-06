@@ -1,9 +1,8 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Play, Pause, CheckCircle, Clock, Loader2, Code, Key, Info } from "lucide-react";
+import { ArrowLeft, Play, Pause, CheckCircle, Clock, Loader2, Code, Key, Info, SkipForward, Edit3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -13,7 +12,7 @@ interface TaskStep {
   id: string;
   title: string;
   description: string;
-  status: "pending" | "in-progress" | "completed" | "failed" | "waiting-input";
+  status: "pending" | "in-progress" | "completed" | "failed" | "waiting-input" | "skipped";
   result?: string;
   code?: string;
   type?: "api-request" | "info-request" | "code-generation" | "analysis";
@@ -37,8 +36,11 @@ const SuperChat = () => {
   const [isExecuting, setIsExecuting] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
   const [showInputDialog, setShowInputDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [inputValue, setInputValue] = useState("");
+  const [editValue, setEditValue] = useState("");
   const [currentInputStep, setCurrentInputStep] = useState<TaskStep | null>(null);
+  const [currentEditStep, setCurrentEditStep] = useState<TaskStep | null>(null);
   const [apiTokens, setApiTokens] = useState<Record<string, string>>({});
   const [projectFiles, setProjectFiles] = useState<Record<string, string>>({});
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -159,6 +161,58 @@ const SuperChat = () => {
     } finally {
       setIsGeneratingPlan(false);
     }
+  };
+
+  const skipStep = (stepIndex: number) => {
+    if (!plan) return;
+
+    const updatedPlan = { ...plan };
+    updatedPlan.steps[stepIndex].status = "skipped";
+    updatedPlan.steps[stepIndex].result = "Этап пропущен пользователем";
+    setPlan(updatedPlan);
+
+    toast({
+      title: "Этап пропущен",
+      description: `Этап "${updatedPlan.steps[stepIndex].title}" был пропущен`,
+    });
+
+    // Если выполнение активно, переходим к следующему этапу
+    if (isExecuting && currentStepIndex === stepIndex) {
+      continueExecution(stepIndex + 1);
+    }
+  };
+
+  const editStepInfo = (step: TaskStep, stepIndex: number) => {
+    setCurrentEditStep(step);
+    setEditValue(step.description);
+    setShowEditDialog(true);
+  };
+
+  const handleEditSubmit = () => {
+    if (!currentEditStep || !editValue.trim() || !plan) {
+      toast({
+        title: "Ошибка",
+        description: "Введите описание этапа",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const stepIndex = plan.steps.findIndex(s => s.id === currentEditStep.id);
+    if (stepIndex >= 0) {
+      const updatedPlan = { ...plan };
+      updatedPlan.steps[stepIndex].description = editValue.trim();
+      setPlan(updatedPlan);
+
+      toast({
+        title: "Этап обновлен",
+        description: "Описание этапа успешно изменено",
+      });
+    }
+
+    setShowEditDialog(false);
+    setEditValue("");
+    setCurrentEditStep(null);
   };
 
   const executeStep = async (step: TaskStep, stepIndex: number) => {
@@ -329,18 +383,23 @@ export default NewComponent;`,
       const stepIndex = plan.steps.findIndex(s => s.id === currentInputStep.id);
       if (stepIndex >= 0) {
         await executeStep(currentInputStep, stepIndex);
+        // Переходим к следующему этапу
+        continueExecution(stepIndex + 1);
       }
     }
 
     setCurrentInputStep(null);
   };
 
-  const executeAllSteps = async () => {
-    if (!plan || isExecuting) return;
+  const continueExecution = async (fromIndex: number) => {
+    if (!plan) return;
 
-    setIsExecuting(true);
-    
-    for (let i = 0; i < plan.steps.length; i++) {
+    for (let i = fromIndex; i < plan.steps.length; i++) {
+      // Пропускаем уже выполненные или пропущенные этапы
+      if (plan.steps[i].status === "completed" || plan.steps[i].status === "skipped") {
+        continue;
+      }
+
       setCurrentStepIndex(i);
       await executeStep(plan.steps[i], i);
       
@@ -351,19 +410,27 @@ export default NewComponent;`,
     }
 
     // Проверяем, все ли этапы завершены
-    const allCompleted = plan.steps.every(step => step.status === "completed");
+    const allCompleted = plan.steps.every(step => 
+      step.status === "completed" || step.status === "skipped"
+    );
     if (allCompleted) {
       setIsExecuting(false);
       setCurrentStepIndex(-1);
 
       toast({
         title: "План выполнен",
-        description: "Все этапы успешно завершены! Результаты готовы.",
+        description: "Все этапы завершены! Результаты готовы.",
       });
 
-      // Показываем финальный результат
       showFinalResult();
     }
+  };
+
+  const executeAllSteps = async () => {
+    if (!plan || isExecuting) return;
+
+    setIsExecuting(true);
+    await continueExecution(0);
   };
 
   const showFinalResult = () => {
@@ -388,6 +455,8 @@ export default NewComponent;`,
         return <div className="w-4 h-4 rounded-full bg-red-400" />;
       case "waiting-input":
         return <Info className="w-4 h-4 text-yellow-400" />;
+      case "skipped":
+        return <SkipForward className="w-4 h-4 text-orange-400" />;
       default:
         return null;
     }
@@ -405,6 +474,8 @@ export default NewComponent;`,
         return "border-red-500 bg-red-500/10";
       case "waiting-input":
         return "border-yellow-500 bg-yellow-500/10";
+      case "skipped":
+        return "border-orange-500 bg-orange-500/10";
       default:
         return "border-gray-600 bg-gray-800/50";
     }
@@ -506,10 +577,39 @@ export default NewComponent;`,
                               {getStatusIcon(step.status)}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2 mb-1">
-                                <h3 className="font-medium text-white">{step.title}</h3>
-                                {getTypeIcon(step.type)}
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center space-x-2">
+                                  <h3 className="font-medium text-white">{step.title}</h3>
+                                  {getTypeIcon(step.type)}
+                                </div>
+                                
+                                {/* Кнопки управления этапом */}
+                                <div className="flex items-center space-x-2">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => editStepInfo(step, index)}
+                                    className="h-6 w-6 p-0 text-gray-400 hover:text-white"
+                                    title="Редактировать этап"
+                                  >
+                                    <Edit3 className="w-3 h-3" />
+                                  </Button>
+                                  
+                                  {step.status === "pending" || step.status === "waiting-input" ? (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => skipStep(index)}
+                                      className="h-6 px-2 text-orange-400 hover:text-orange-300"
+                                      title="Пропустить этап"
+                                    >
+                                      <SkipForward className="w-3 h-3 mr-1" />
+                                      Пропустить
+                                    </Button>
+                                  ) : null}
+                                </div>
                               </div>
+                              
                               <p className="text-sm text-gray-300 mb-2">{step.description}</p>
                               
                               {step.status === "waiting-input" && step.requiredInput && (
@@ -519,8 +619,12 @@ export default NewComponent;`,
                               )}
                               
                               {step.result && (
-                                <div className="text-sm text-green-300 bg-green-500/10 rounded-lg p-2 mb-2">
-                                  ✅ {step.result}
+                                <div className={`text-sm rounded-lg p-2 mb-2 ${
+                                  step.status === "skipped" 
+                                    ? "text-orange-300 bg-orange-500/10" 
+                                    : "text-green-300 bg-green-500/10"
+                                }`}>
+                                  {step.status === "skipped" ? "⏭️" : "✅"} {step.result}
                                 </div>
                               )}
                               
@@ -542,13 +646,17 @@ export default NewComponent;`,
                     </div>
 
                     {/* Финальный результат */}
-                    {plan.steps.every(step => step.status === "completed") && (
+                    {plan.steps.every(step => step.status === "completed" || step.status === "skipped") && (
                       <div className="mt-6 p-4 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-xl">
                         <h3 className="text-lg font-semibold text-green-300 mb-2">🎉 Задача выполнена!</h3>
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
                             <span className="text-gray-400">Завершенных этапов:</span>
-                            <span className="text-white ml-2">{plan.steps.length}</span>
+                            <span className="text-white ml-2">{plan.steps.filter(s => s.status === "completed").length}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400">Пропущенных этапов:</span>
+                            <span className="text-white ml-2">{plan.steps.filter(s => s.status === "skipped").length}</span>
                           </div>
                           <div>
                             <span className="text-gray-400">Созданных файлов:</span>
@@ -643,6 +751,37 @@ export default NewComponent;`,
                 Продолжить
               </Button>
               <Button variant="outline" onClick={() => setShowInputDialog(false)}>
+                Отмена
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="bg-slate-900 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              ✏️ Редактировать этап
+            </DialogTitle>
+            <DialogDescription className="text-gray-300">
+              Измените описание этапа "{currentEditStep?.title}"
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              placeholder="Введите новое описание этапа"
+              className="bg-slate-800 border-slate-600 text-white"
+              rows={4}
+            />
+            <div className="flex space-x-2">
+              <Button onClick={handleEditSubmit} className="flex-1">
+                Сохранить изменения
+              </Button>
+              <Button variant="outline" onClick={() => setShowEditDialog(false)}>
                 Отмена
               </Button>
             </div>
