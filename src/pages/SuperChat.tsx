@@ -78,7 +78,7 @@ const SuperChat = () => {
         },
         body: JSON.stringify({
           settings: {
-            model: "gpt-4o-mini",
+            model: "gpt-4o",
             temperature: 0.3
           }
         })
