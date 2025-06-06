@@ -414,15 +414,18 @@ export default NewComponent;`,
       return;
     }
 
+    // Сохраняем введенную информацию
     if (currentInputStep.requiredInput?.type === "api-key") {
       const keyName = inputValue.includes("sk-") ? "OPENAI_API_KEY" : 
                      inputValue.includes("pk_") ? "STRIPE_API_KEY" : "API_KEY";
       setApiTokens({...apiTokens, [keyName]: inputValue});
     }
 
+    // Закрываем диалог и сбрасываем значения
     setShowInputDialog(false);
     setInputValue("");
 
+    // Сразу продолжаем выполнение без дополнительных подтверждений
     if (plan && currentStepIndex >= 0) {
       const stepIndex = plan.steps.findIndex(s => s.id === currentInputStep.id);
       if (stepIndex >= 0) {
@@ -759,14 +762,14 @@ export default NewComponent;`,
         </div>
       </div>
 
-      {/* Input Dialog */}
+      {/* Input Dialog - только один диалог для ввода */}
       <Dialog open={showInputDialog} onOpenChange={setShowInputDialog}>
         <DialogContent className="bg-slate-900 border-slate-700">
           <DialogHeader>
             <DialogTitle className="text-white">
               {currentInputStep?.requiredInput?.type === "api-key" ? "🔑 Требуется API ключ" : 
                currentInputStep?.requiredInput?.type === "info" ? "ℹ️ Критически важная информация" : 
-               "✅ Необходимое подтверждение"}
+               "✅ Необходимая информация"}
             </DialogTitle>
             <DialogDescription className="text-gray-300">
               {currentInputStep?.requiredInput?.prompt}
@@ -782,6 +785,11 @@ export default NewComponent;`,
                 placeholder={currentInputStep.requiredInput.placeholder || "Введите API ключ"}
                 type="password"
                 className="bg-slate-800 border-slate-600 text-white"
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    handleInputSubmit();
+                  }
+                }}
               />
             ) : (
               <Textarea
@@ -790,11 +798,17 @@ export default NewComponent;`,
                 placeholder={currentInputStep?.requiredInput?.placeholder || "Введите информацию"}
                 className="bg-slate-800 border-slate-600 text-white"
                 rows={3}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleInputSubmit();
+                  }
+                }}
               />
             )}
             <div className="flex space-x-2">
               <Button onClick={handleInputSubmit} className="flex-1">
-                Продолжить выполнение
+                Применить и продолжить
               </Button>
               <Button variant="outline" onClick={() => setShowInputDialog(false)}>
                 Отмена
